@@ -20,11 +20,6 @@ class kbmController extends Controller
         $role = session('admin_role');
         $adminId = session('admin_id');
 
-        // Cek apakah user sudah login
-        if (!$role || !$adminId) {
-            return redirect()->route('formLogin')->with('error', 'Silakan login terlebih dahulu.');
-        }
-
         $guru = null;
         $siswaData = null;
         $kelasData = null;
@@ -87,10 +82,6 @@ class kbmController extends Controller
     public function showByKelas($idwalas)
     {
         $role = session('admin_role');
-
-        if (!$role) {
-            return redirect()->route('formLogin')->with('error', 'Silakan login terlebih dahulu.');
-        }
 
         $kelas = Walas::with(['kbm.guru'])->findOrFail($idwalas);
         return view('kbm.by-kelas', compact('kelas'));
