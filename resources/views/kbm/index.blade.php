@@ -4,6 +4,7 @@
 <head>
     <title>Jadwal KBM</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 
 <body>
@@ -32,9 +33,22 @@
             <div class="alert alert-danger">{{ session('error') }}</div>
         @endif
         
+        <div class="mb-3">
+            <label for="filter-hari" class="form-label"><strong>Filter Hari:</strong></label>
+            <select id="filter-hari" class="form-select" style="width: 200px;">
+                <option value="">Semua Hari</option>
+                <option value="Senin">Senin</option>
+                <option value="Selasa">Selasa</option>
+                <option value="Rabu">Rabu</option>
+                <option value="Kamis">Kamis</option>
+                <option value="Jumat">Jumat</option>
+                <option value="Sabtu">Sabtu</option>
+            </select>
+        </div>
+        
         <div class="card">
             <div class="card-body">
-                <table class="table table-bordered table-striped align-middle">
+                <table class="table table-bordered table-striped align-middle" id="tabel-jadwal">
                     <thead class="table-primary text-center">
                         <tr>
                             <th>No</th>
@@ -58,42 +72,6 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse ($jadwals as $i => $jadwal)
-                        <tr>
-                            <td class="text-center">{{ $i + 1 }}</td>
-                            @if(session('admin_role') === 'admin')
-                                <td>{{ $jadwal->guru->nama }}</td>
-                                <td>{{ $jadwal->guru->mapel }}</td>
-                                <td>{{ $jadwal->walas->namakelas }}</td>
-                            @elseif(session('admin_role') === 'siswa')
-                                <td>{{ $jadwal->guru->nama }}</td>
-                                <td>{{ $jadwal->guru->mapel }}</td>
-                            @endif
-                            @if(session('admin_role') === 'guru')
-                                <td>{{ $jadwal->walas->namakelas }}</td>
-                            @endif
-                            <td>{{ $jadwal->hari }}</td>
-                            <td>{{ $jadwal->mulai }}</td>
-                            <td>{{ $jadwal->selesai }}</td>
-                            @if(session('admin_role') === 'admin')
-                                <td class="text-center">
-                                    <a href="{{ route('kbm.by-kelas', $jadwal->idwalas) }}" class="btn btn-sm btn-info">Lihat Kelas</a>
-                                </td>
-                            @endif
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="{{ session('admin_role') === 'admin' ? '8' : '5' }}" class="text-center text-muted">
-                                @if(session('admin_role') === 'guru')
-                                    Anda belum memiliki jadwal mengajar
-                                @elseif(session('admin_role') === 'siswa')
-                                    Belum ada jadwal pelajaran untuk kelas Anda
-                                @else
-                                    Belum ada jadwal pelajaran
-                                @endif
-                            </td>
-                        </tr>
-                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -105,6 +83,88 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+    $(document).ready(function(){
+        const role = '{{ session("admin_role") }}';
+        
+        function renderTable(data) {
+            let rows = '';
+            let colspan = 5;
+            
+            if (role === 'admin') {
+                colspan = 8;
+            }
+            
+            if (data.length === 0) {
+                let message = 'Belum ada jadwal pelajaran';
+                if (role === 'guru') {
+                    message = 'Anda belum memiliki jadwal mengajar';
+                } else if (role === 'siswa') {
+                    message = 'Belum ada jadwal pelajaran untuk kelas Anda';
+                }
+                rows = `<tr><td colspan="${colspan}" class="text-center text-muted">${message}</td></tr>`;
+            } else {
+                data.forEach((jadwal, index) => {
+                    rows += '<tr>';
+                    rows += `<td class="text-center">${index + 1}</td>`;
+                    
+                    if (role === 'admin') {
+                        rows += `<td>${jadwal.guru.nama}</td>`;
+                        rows += `<td>${jadwal.guru.mapel}</td>`;
+                        rows += `<td>${jadwal.walas.namakelas}</td>`;
+                    } else if (role === 'siswa') {
+                        rows += `<td>${jadwal.guru.nama}</td>`;
+                        rows += `<td>${jadwal.guru.mapel}</td>`;
+                    }
+                    
+                    if (role === 'guru') {
+                        rows += `<td>${jadwal.walas.namakelas}</td>`;
+                    }
+                    
+                    rows += `<td>${jadwal.hari}</td>`;
+                    rows += `<td>${jadwal.mulai}</td>`;
+                    rows += `<td>${jadwal.selesai}</td>`;
+                    
+                    if (role === 'admin') {
+                        rows += `<td class="text-center">`;
+                        rows += `<a href="/kbm/kelas/${jadwal.idwalas}" class="btn btn-sm btn-info">Lihat Kelas</a>`;
+                        rows += `</td>`;
+                    }
+                    
+                    rows += '</tr>';
+                });
+            }
+            
+            $('#tabel-jadwal tbody').html(rows);
+        }
+        
+        function loadJadwal(hari = '') {
+            $.ajax({
+                url: "{{ route('kbm.data') }}",
+                method: "GET",
+                data: { hari: hari },
+                success: function(response) {
+                    renderTable(response);
+                },
+                error: function(xhr) {
+                    let message = 'Gagal memuat data jadwal.';
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        message = xhr.responseJSON.error;
+                    }
+                    alert(message);
+                }
+            });
+        }
+        
+        $('#filter-hari').on('change', function() {
+            const hari = $(this).val();
+            loadJadwal(hari);
+        });
+        
+        loadJadwal();
+    });
+    </script>
 </body>
 
 </html>

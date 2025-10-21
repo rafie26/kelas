@@ -24,22 +24,13 @@ class kbmController extends Controller
         $siswaData = null;
         $kelasData = null;
 
-        if ($role === 'admin') {
-            // Admin melihat semua jadwal
-            $jadwals = kbm::with(['guru', 'walas'])->get();
-        } elseif ($role === 'guru') {
-            // Guru hanya melihat jadwal mengajar sendiri
+        if ($role === 'guru') {
             $guru = guru::where('id', $adminId)->first();
             
             if (!$guru) {
                 return redirect()->route('home')->with('error', 'Data guru tidak ditemukan.');
             }
-            
-            $jadwals = kbm::with(['guru', 'walas'])
-                ->where('idguru', $guru->idguru)
-                ->get();
         } elseif ($role === 'siswa') {
-            // Siswa melihat jadwal kelas sendiri
             $siswaData = \App\Models\Siswa::where('id', $adminId)
                 ->with(['kelas.walas'])
                 ->first();
@@ -49,14 +40,58 @@ class kbmController extends Controller
             }
             
             $kelasData = $siswaData->kelas->walas;
-            $jadwals = kbm::with(['guru', 'walas'])
-                ->where('idwalas', $siswaData->kelas->idwalas)
-                ->get();
-        } else {
-            return redirect()->route('home')->with('error', 'Akses ditolak.');
         }
 
-        return view('kbm.index', compact('jadwals', 'guru', 'siswaData', 'kelasData'));
+        return view('kbm.index', compact('guru', 'siswaData', 'kelasData'));
+    }
+
+    public function getData(Request $request)
+    {
+        $role = session('admin_role');
+        $adminId = session('admin_id');
+        $hari = $request->input('hari');
+
+        $query = kbm::with(['guru', 'walas']);
+
+        if ($role === 'admin') {
+            // Admin melihat semua jadwal
+            if ($hari) {
+                $query->where('hari', $hari);
+            }
+        } elseif ($role === 'guru') {
+            // Guru hanya melihat jadwal mengajar sendiri
+            $guru = guru::where('id', $adminId)->first();
+            
+            if (!$guru) {
+                return response()->json(['error' => 'Data guru tidak ditemukan'], 404);
+            }
+            
+            $query->where('idguru', $guru->idguru);
+            
+            if ($hari) {
+                $query->where('hari', $hari);
+            }
+        } elseif ($role === 'siswa') {
+            // Siswa melihat jadwal kelas sendiri
+            $siswaData = \App\Models\Siswa::where('id', $adminId)
+                ->with(['kelas.walas'])
+                ->first();
+            
+            if (!$siswaData || !$siswaData->kelas) {
+                return response()->json(['error' => 'Anda belum terdaftar di kelas manapun'], 404);
+            }
+            
+            $query->where('idwalas', $siswaData->kelas->idwalas);
+            
+            if ($hari) {
+                $query->where('hari', $hari);
+            }
+        } else {
+            return response()->json(['error' => 'Akses ditolak'], 403);
+        }
+
+        $jadwals = $query->get();
+        return response()->json($jadwals);
     }
 
     /**

@@ -45,6 +45,7 @@ Route::middleware(['ceklogin'])->group(function () {
     
     // KBM (Jadwal Pelajaran)
     Route::get('/kbm', [kbmController::class, 'index'])->name('kbm.index');
+    Route::get('/kbm/data', [kbmController::class, 'getData'])->name('kbm.data');
     Route::get('/kbm/guru/{idguru}', [kbmController::class, 'showByGuru'])->name('kbm.by-guru');
     Route::get('/kbm/kelas/{idwalas}', [kbmController::class, 'showByKelas'])->name('kbm.by-kelas');
 });
