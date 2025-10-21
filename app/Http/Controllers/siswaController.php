@@ -12,8 +12,21 @@ class siswaController extends Controller
     //
     public function home()
     {
-        $siswa = siswa::all();
-        return view('home', compact('siswa'));
+        return view('home');
+    }
+
+    public function getData()
+    {
+        $siswa = Siswa::all();
+        return response()->json($siswa);
+    }
+
+    public function search(Request $request)
+    {
+        $keyword = strtolower($request->input('q'));
+        $siswa = Siswa::whereRaw('LOWER(nama) LIKE ?', ["%{$keyword}%"])
+            ->get();
+        return response()->json($siswa);
     }
 
     public function create()

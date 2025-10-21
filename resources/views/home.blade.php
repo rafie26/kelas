@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Home</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
     <h2>Halo, {{ session('admin_role') }} {{ session('admin_username') }}</h2>
@@ -68,7 +69,9 @@
         </a>
         <br><br>
 
-        <table border="1" cellpadding="8">
+        <p><label>Cari Siswa: </label><input type="text" id="search" placeholder="Ketik nama..."></p>
+
+        <table border="1" cellpadding="8" id="tabel-siswa">
             <thead>
                 <tr>
                     <th>No</th>
@@ -79,21 +82,75 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($siswa as $i => $s)
-                    <tr>
-                        <td>{{ $i + 1 }}</td>
-                        <td>{{ $s->nama }}</td>
-                        <td>{{ $s->tb }}</td>
-                        <td>{{ $s->bb }}</td>
-                        <td>
-                            <a href="{{ route('siswa.edit', $s->idsiswa) }}">Edit</a> |
-                            <a href="{{ route('siswa.delete', $s->idsiswa) }}"
-                               onclick="return confirm('Yakin ingin menghapus?')">Hapus</a>
-                        </td>
-                    </tr>
-                @endforeach
             </tbody>
         </table>
+
+        <script>
+        $(document).ready(function(){
+            function renderTable(data) {
+                let rows = '';
+                if (data.length === 0) {
+                    rows = '<tr><td colspan="5">Tidak ada data ditemukan</td></tr>';
+                } else {
+                    data.forEach((s, index) => {
+                        rows += `
+                            <tr>
+                                <td>${index + 1}</td>
+                                <td>${s.nama}</td>
+                                <td>${s.tb}</td>
+                                <td>${s.bb}</td>
+                                @if (session('admin_role') === 'admin')
+                                <td>
+                                    <a href="/siswa/${s.idsiswa}/edit">Edit</a> |
+                                    <a href="/siswa/${s.idsiswa}/delete" onclick="return confirm('Yakin ingin menghapus?')">Hapus</a>
+                                </td>
+                                @endif
+                            </tr>
+                        `;
+                    });
+                }
+                $('#tabel-siswa tbody').html(rows);
+            }
+
+            function loadSiswa() {
+                $.ajax({
+                    url: "{{ route('siswa.data') }}",
+                    method: "GET",
+                    success: function(response) {
+                        renderTable(response);
+                    },
+                    error: function() {
+                        alert('Gagal memuat data siswa.');
+                    }
+                });
+            }
+
+            function searchSiswa(keyword) {
+                $.ajax({
+                    url: "{{ route('siswa.search') }}",
+                    method: "GET",
+                    data: { q: keyword },
+                    success: function(response) {
+                        renderTable(response);
+                    },
+                    error: function() {
+                        console.error('Gagal mencari data siswa.');
+                    }
+                });
+            }
+
+            $('#search').on('keyup', function() {
+                const keyword = $(this).val().trim();
+                if (keyword.length > 0) {
+                    searchSiswa(keyword);
+                } else {
+                    loadSiswa();
+                }
+            });
+
+            loadSiswa();
+        });
+        </script>
     @endif
 </body>
 </html>

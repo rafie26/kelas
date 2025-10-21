@@ -25,9 +25,17 @@ Route::middleware(['ceklogin'])->group(function () {
     // Logout
     Route::get('/logout', [adminController::class, 'logout'])->name('logout');
     
-    // CRUD Siswa
-    Route::get('/siswa/create', [siswaController::class, 'create'])->name('siswa.create');
-    Route::post('/siswa/store', [siswaController::class, 'store'])->name('siswa.store');
+    // CRUD Siswa - Create & Store hanya untuk admin
+    Route::middleware(['admin'])->group(function () {
+        Route::get('/siswa/create', [siswaController::class, 'create'])->name('siswa.create');
+        Route::post('/siswa/store', [siswaController::class, 'store'])->name('siswa.store');
+    });
+    
+    // Ajax routes untuk data siswa
+    Route::get('/siswa/data', [siswaController::class, 'getData'])->name('siswa.data');
+    Route::get('/siswa/search', [siswaController::class, 'search'])->name('siswa.search');
+    
+    // Edit, Update, Delete siswa untuk semua user yang login
     Route::get('/siswa/{id}/edit', [siswaController::class, 'edit'])->name('siswa.edit');
     Route::post('/siswa/{id}/update', [siswaController::class, 'update'])->name('siswa.update');
     Route::get('/siswa/{id}/delete', [siswaController::class, 'destroy'])->name('siswa.delete');
