@@ -6,9 +6,16 @@ use Illuminate\Http\Request;
 use App\Models\kbm;
 use App\Models\guru;
 use App\Models\Walas;
+use App\Services\KbmService;
 
 class kbmController extends Controller
 {
+    protected $kbmService;
+
+    public function __construct(KbmService $kbmService)
+    {
+        $this->kbmService = $kbmService;
+    }
     /**
      * Mengambil semua data jadwal KBM
      * Admin: Lihat semua jadwal
@@ -17,81 +24,23 @@ class kbmController extends Controller
      */
     public function index()
     {
-        $role = session('admin_role');
-        $adminId = session('admin_id');
-
-        $guru = null;
-        $siswaData = null;
-        $kelasData = null;
-
-        if ($role === 'guru') {
-            $guru = guru::where('id', $adminId)->first();
-            
-            if (!$guru) {
-                return redirect()->route('home')->with('error', 'Data guru tidak ditemukan.');
-            }
-        } elseif ($role === 'siswa') {
-            $siswaData = \App\Models\Siswa::where('id', $adminId)
-                ->with(['kelas.walas'])
-                ->first();
-            
-            if (!$siswaData || !$siswaData->kelas) {
-                return redirect()->route('home')->with('error', 'Anda belum terdaftar di kelas manapun.');
-            }
-            
-            $kelasData = $siswaData->kelas->walas;
+        try {
+            $data = $this->kbmService->getIndexData();
+            return view('kbm.index', $data);
+        } catch (\Exception $e) {
+            return redirect()->route('home')->with('error', $e->getMessage());
         }
-
-        return view('kbm.index', compact('guru', 'siswaData', 'kelasData'));
     }
 
     public function getData(Request $request)
     {
-        $role = session('admin_role');
-        $adminId = session('admin_id');
-        $hari = $request->input('hari');
-
-        $query = kbm::with(['guru', 'walas']);
-
-        if ($role === 'admin') {
-            // Admin melihat semua jadwal
-            if ($hari) {
-                $query->where('hari', $hari);
-            }
-        } elseif ($role === 'guru') {
-            // Guru hanya melihat jadwal mengajar sendiri
-            $guru = guru::where('id', $adminId)->first();
-            
-            if (!$guru) {
-                return response()->json(['error' => 'Data guru tidak ditemukan'], 404);
-            }
-            
-            $query->where('idguru', $guru->idguru);
-            
-            if ($hari) {
-                $query->where('hari', $hari);
-            }
-        } elseif ($role === 'siswa') {
-            // Siswa melihat jadwal kelas sendiri
-            $siswaData = \App\Models\Siswa::where('id', $adminId)
-                ->with(['kelas.walas'])
-                ->first();
-            
-            if (!$siswaData || !$siswaData->kelas) {
-                return response()->json(['error' => 'Anda belum terdaftar di kelas manapun'], 404);
-            }
-            
-            $query->where('idwalas', $siswaData->kelas->idwalas);
-            
-            if ($hari) {
-                $query->where('hari', $hari);
-            }
-        } else {
-            return response()->json(['error' => 'Akses ditolak'], 403);
+        try {
+            $hari = $request->input('hari');
+            $jadwals = $this->kbmService->getKbmData($hari);
+            return response()->json($jadwals);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 404);
         }
-
-        $jadwals = $query->get();
-        return response()->json($jadwals);
     }
 
     /**
@@ -100,14 +49,12 @@ class kbmController extends Controller
      */
     public function showByGuru($idguru)
     {
-        $role = session('admin_role');
-
-        if ($role !== 'admin') {
-            return redirect()->route('kbm.index')->with('error', 'Akses ditolak. Hanya admin yang dapat melihat jadwal guru lain.');
+        try {
+            $guru = $this->kbmService->getKbmByGuru($idguru);
+            return view('kbm.by-guru', compact('guru'));
+        } catch (\Exception $e) {
+            return redirect()->route('kbm.index')->with('error', $e->getMessage());
         }
-
-        $guru = guru::with(['kbm.walas'])->findOrFail($idguru);
-        return view('kbm.by-guru', compact('guru'));
     }
 
     /**
@@ -116,9 +63,7 @@ class kbmController extends Controller
      */
     public function showByKelas($idwalas)
     {
-        $role = session('admin_role');
-
-        $kelas = Walas::with(['kbm.guru'])->findOrFail($idwalas);
+        $kelas = $this->kbmService->getKbmByKelas($idwalas);
         return view('kbm.by-kelas', compact('kelas'));
     }
 }

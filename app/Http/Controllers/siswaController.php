@@ -6,9 +6,18 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\siswa;
 use App\Models\admin;
+use App\Services\SiswaService;
+use App\Http\Requests\StoreSiswaRequest;
 
 class siswaController extends Controller
 {
+    protected $service;
+    
+    public function __construct(SiswaService $service)
+    {
+        $this->service = $service;
+    }
+    
     //
     public function home()
     {
@@ -34,38 +43,10 @@ class siswaController extends Controller
         return view('siswa.create');
     }
 
-    public function store(Request $request)
+    public function store(StoreSiswaRequest $request)
     {
-        try {
-            // validasi input
-            $request->validate([
-                'username' => 'required|string|max:50|unique:dataadmin,username',
-                'password' => 'required|string|min:4',
-                'nama' => 'required|string|max:100',
-                'tb' => 'required|numeric',
-                'bb' => 'required|numeric',
-            ]);
-
-            // buat akun admin dengan role siswa
-            $admin = admin::create([
-                'username' => $request->username,
-                'password' => \Illuminate\Support\Facades\Hash::make($request->password),
-                'role' => 'siswa',
-            ]);
-
-            // buat data siswa dengan foreign key ke admin
-            siswa::create([
-                'id' => $admin->id, // foreign key ke dataadmin
-                'nama' => $request->nama,
-                'tb' => $request->tb,
-                'bb' => $request->bb,
-            ]);
-            
-            return redirect()->route('home')->with('success', 'Siswa berhasil ditambahkan dengan akun login');
-
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Gagal menambah siswa: ' . $e->getMessage());
-        }
+        $this->service->createSiswa($request->validated());
+        return redirect()->route('home')->with('success', 'Data siswa berhasil ditambahkan!');
     }
 
     public function edit($id)
